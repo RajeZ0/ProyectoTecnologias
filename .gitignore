@@ -28,4 +28,5 @@ next-env.d.ts
 
 # prisma
 prisma/dev.db
+dev.db
 prisma/schema.sql

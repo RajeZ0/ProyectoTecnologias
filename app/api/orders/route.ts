@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 const SHIPPING_MIN_DAYS = 2
 const SHIPPING_MAX_DAYS = 3
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase()
+
 const serializeOrder = (order: Awaited<ReturnType<typeof getOrderById>>) => {
   if (!order) {
     return null
@@ -15,6 +17,7 @@ const serializeOrder = (order: Awaited<ReturnType<typeof getOrderById>>) => {
     orderNumber: order.orderNumber,
     customerName: order.customerName,
     customerEmail: order.customerEmail,
+    userId: order.userId ?? null,
     total: order.total,
     itemCount: order.itemCount,
     status: order.status,
@@ -23,6 +26,13 @@ const serializeOrder = (order: Awaited<ReturnType<typeof getOrderById>>) => {
     estimatedDelivery: order.estimatedDelivery.toISOString(),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
+    user: order.user
+      ? {
+          id: order.user.id,
+          name: order.user.name,
+          email: order.user.email,
+        }
+      : null,
     items: order.items.map((item) => ({
       id: item.id,
       productId: item.productId,
@@ -56,6 +66,13 @@ async function getOrderById(id: number) {
           },
         },
       },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
     },
   })
 }
@@ -63,7 +80,12 @@ async function getOrderById(id: number) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const customerEmail = searchParams.get('email')
+    const emailParam = searchParams.get('email')
+    if (!emailParam) {
+      return NextResponse.json({ error: 'Missing email query parameter' }, { status: 400 })
+    }
+
+    const customerEmail = normalizeEmail(emailParam)
 
     if (!customerEmail) {
       return NextResponse.json({ error: 'Missing email query parameter' }, { status: 400 })
@@ -83,6 +105,13 @@ export async function GET(request: Request) {
             },
           },
         },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -95,6 +124,7 @@ export async function GET(request: Request) {
         orderNumber: order.orderNumber,
         customerName: order.customerName,
         customerEmail: order.customerEmail,
+        userId: order.userId ?? null,
         total: order.total,
         itemCount: order.itemCount,
         status: order.status,
@@ -103,6 +133,13 @@ export async function GET(request: Request) {
         estimatedDelivery: order.estimatedDelivery.toISOString(),
         createdAt: order.createdAt.toISOString(),
         updatedAt: order.updatedAt.toISOString(),
+        user: order.user
+          ? {
+              id: order.user.id,
+              name: order.user.name,
+              email: order.user.email,
+            }
+          : null,
         items: order.items.map((item) => ({
           id: item.id,
           productId: item.productId,
@@ -181,6 +218,20 @@ export async function POST(request: Request) {
     const estimatedDelivery = new Date()
     estimatedDelivery.setDate(estimatedDelivery.getDate() + SHIPPING_MAX_DAYS)
 
+    const customerEmail =
+      typeof body?.customerEmail === 'string' && body.customerEmail.trim().length
+        ? normalizeEmail(body.customerEmail)
+        : 'guest@example.com'
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: customerEmail },
+    })
+
+    const customerName =
+      typeof body?.customerName === 'string' && body.customerName.trim().length
+        ? body.customerName.trim()
+        : existingUser?.name ?? 'Invitado'
+
     const orderNumber =
       typeof body?.orderNumber === 'string' && body.orderNumber.trim().length
         ? body.orderNumber.trim().toUpperCase()
@@ -191,11 +242,9 @@ export async function POST(request: Request) {
     const createdOrder = await prisma.order.create({
       data: {
         orderNumber,
-        customerName: typeof body?.customerName === 'string' && body.customerName.trim().length ? body.customerName : 'Invitado',
-        customerEmail:
-          typeof body?.customerEmail === 'string' && body.customerEmail.trim().length
-            ? body.customerEmail
-            : 'guest@example.com',
+        customerName,
+        customerEmail,
+        user: existingUser ? { connect: { id: existingUser.id } } : undefined,
         total,
         itemCount,
         status: 'PENDING',

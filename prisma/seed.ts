@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs'
 import { PrismaClient } from '../lib/generated/prisma'
 
 const prisma = new PrismaClient()
@@ -183,8 +184,19 @@ const categoriesData = [
 async function main() {
   await prisma.orderItem.deleteMany()
   await prisma.order.deleteMany()
+  await prisma.user.deleteMany()
   await prisma.product.deleteMany()
   await prisma.category.deleteMany()
+
+  const passwordHash = await bcrypt.hash('guest123', 10)
+
+  const defaultUser = await prisma.user.create({
+    data: {
+      name: 'Invitado',
+      email: 'guest@example.com',
+      password: passwordHash,
+    },
+  })
 
   for (const category of categoriesData) {
     await prisma.category.create({
@@ -240,8 +252,9 @@ async function main() {
     await prisma.order.create({
       data: {
         orderNumber: 'ORD-SEED-001',
-        customerName: 'Invitado',
-        customerEmail: 'guest@example.com',
+        customerName: defaultUser.name,
+        customerEmail: defaultUser.email,
+        user: { connect: { id: defaultUser.id } },
         total,
         itemCount,
         status: 'PENDING',

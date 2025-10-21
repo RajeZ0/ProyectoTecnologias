@@ -23,6 +23,12 @@ interface Order {
   orderNumber: string
   customerName: string
   customerEmail: string
+  userId: number | null
+  user: {
+    id: number
+    name: string
+    email: string
+  } | null
   total: number
   itemCount: number
   status: string

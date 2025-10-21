@@ -9,6 +9,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
 model Category {
   id          Int       @id @default(autoincrement())
   name        String
@@ -41,6 +51,7 @@ model Order {
   orderNumber       String      @unique
   customerName      String
   customerEmail     String
+  userId            Int?
   total             Float
   itemCount         Int
   status            String      @default("PENDING")
@@ -50,6 +61,7 @@ model Order {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
   items             OrderItem[]
+  user              User?       @relation(fields: [userId], references: [id])
 }
 
 model OrderItem {
