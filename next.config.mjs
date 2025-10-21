@@ -4,9 +4,11 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'standalone',
-  outputFileTracingIncludes: {
-    '/api/products': ['./prisma/dev.db'],
-    '/api/orders': ['./prisma/dev.db'],
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/products': ['./prisma/dev.db'],
+      '/api/orders': ['./prisma/dev.db'],
+    },
   },
 }
 
