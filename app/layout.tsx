@@ -12,7 +12,7 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "ElectroUAEMEX - Componentes Electrónicos para Ingeniería",
   description: "Tienda especializada en componentes electrónicos básicos para estudiantes de ingeniería UAEMEX",
-    generator: 'v0.app'
+    generator: ''
 }
 
 export default function RootLayout({
