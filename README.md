@@ -1,6 +1,6 @@
 # Uaemex-Electonicos-JP-JJ-R
 
-Aplicación web para la tienda de componentes electrónicos de la Facultad de Ingeniería de la UAEMéx. El proyecto está construido sobre Next.js 15 con TypeScript y Tailwind CSS, e integra una base de datos SQLite gestionada mediante Prisma para almacenar el catálogo, ofertas y pedidos.
+Aplicación web para la tienda de componentes electrónicos de la Facultad de Ingeniería de la UAEMéx. El proyecto está construido sobre Next.js 15 con TypeScript y Tailwind CSS, e integra una base de datos PostgreSQL gestionada mediante Prisma para almacenar el catálogo, ofertas y pedidos.
 
 ##  Stack principal
 
@@ -8,7 +8,7 @@ Aplicación web para la tienda de componentes electrónicos de la Facultad de In
 - **Lenguaje:** TypeScript
 - **Estilos:** Tailwind CSS 4, Radix UI, shadcn/ui
 - **Gráficas:** Recharts
-- **ORM / Base de datos:** Prisma + SQLite (`prisma/dev.db`)
+- **ORM / Base de datos:** Prisma + PostgreSQL
 - **Herramientas adicionales:** Prisma Studio, tsx
 
 ##  Estructura relevante
@@ -33,14 +33,28 @@ Aplicación web para la tienda de componentes electrónicos de la Facultad de In
 
 ##  Instalación y configuración
 
+### Variables de entorno
+
+1. Duplica `.env.example` como `.env`.
+2. Reemplaza el valor de `DATABASE_URL` por la cadena de conexión de tu instancia de PostgreSQL.
+
+### Base local rápida con Docker
+
+```bash
+docker run --name uaemex-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=uaemex -p 5432:5432 -d postgres:16
+```
+
+### Configuración de la app
+
 ```bash
 # Instalar dependencias
 npm install
 
-# Generar el cliente de Prisma
+# Generar el cliente y aplicar migraciones
 npx prisma generate
+npx prisma migrate deploy
 
-# Crear la base de datos, tablas y datos iniciales
+# Sembrar datos de ejemplo
 npm run db:seed
 
 # Abrir Prisma Studio (opcional) para inspeccionar la base
@@ -50,7 +64,7 @@ npx prisma studio
 npm run dev
 ```
 
-> Nota: `npm run db:seed` elimina y recrea el contenido de `prisma/dev.db` usando `prisma/seed.ts`. Si necesitas un reset manual elimina el archivo `prisma/dev.db` antes de ejecutar el seed.
+> Nota: `npm run db:seed` elimina y repuebla las tablas antes de insertar los datos de ejemplo.
 
 ## Scripts disponibles
 
@@ -75,21 +89,10 @@ Los valores monetarios se guardan como `Float` y las fechas (creación y entrega
 
 ### Flujo de migraciones
 
-Para recrear la base desde cero:
+Las migraciones viven en `prisma/migrations`. Para instalar el esquema en cualquier entorno:
 
 ```bash
-# (Opcional) eliminar base existente
-Remove-Item prisma/dev.db            # PowerShell
-# rm prisma/dev.db                   # Bash
-
-# Generar SQL a partir del schema
-npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script ^
-  | Out-File prisma/schema.sql -Encoding utf8
-
-# Ejecutar el script
-npx prisma db execute --schema prisma/schema.prisma --file prisma/schema.sql
-
-# Sembrar datos
+npx prisma migrate deploy
 npm run db:seed
 ```
 
@@ -147,5 +150,18 @@ Edita `prisma/seed.ts` si necesitas ajustar productos u ofertas.
 2. Abre `http://localhost:8080`
 3. Recorre catálogo, agrega productos y finaliza una compra
 4. Revisa `/orders` y Prisma Studio (`http://localhost:5555`) para confirmar datos
----
 
+##  Despliegue en Render
+
+1. Publica el repositorio en GitHub y crea en Render un servicio de base de datos **PostgreSQL**. Copia la URL completa (incluye usuario, contraseña, host, puerto y base).
+2. En Render crea un **Web Service** apuntando a la rama principal del repo y configura las variables:
+   - `DATABASE_URL` → URL del Postgres provisionado.
+   - `NODE_VERSION` → `20.17.0`.
+3. Ajusta los comandos del servicio:
+   - **Build command:** `npm install && npx prisma generate && npm run build`
+   - **Start command:** `npm run start`
+   - **Post-Deploy command** (ejecutar tras el primer deploy o después de limpiar Datos): `npx prisma migrate deploy && npm run db:seed`
+4. Render inyectará `DATABASE_URL` durante el build, por lo que el pre-render de páginas puede leer los datos reales del catálogo.
+5. Para refrescar datos después de deploys futuros solo corre de nuevo el Post-Deploy command o ejecuta manualmente `npx prisma migrate deploy` y `npm run db:seed` desde la consola del servicio.
+
+---
