@@ -155,13 +155,14 @@ Edita `prisma/seed.ts` si necesitas ajustar productos u ofertas.
 
 1. Publica el repositorio en GitHub y crea en Render un servicio de base de datos **PostgreSQL**. Copia la URL completa (incluye usuario, contraseña, host, puerto y base).
 2. En Render crea un **Web Service** apuntando a la rama principal del repo y configura las variables:
-   - `DATABASE_URL` → URL del Postgres provisionado.
+   - `DATABASE_URL` → URL del Postgres provisionado (añade `?sslmode=require`).
    - `NODE_VERSION` → `20.17.0`.
+   - `SEED_DATABASE` → `true` **solo para el primer deploy**, luego elimínala.
 3. Ajusta los comandos del servicio:
    - **Build command:** `npm install && npx prisma generate && npm run build`
-   - **Start command:** `npm run start`
-   - **Post-Deploy command** (ejecutar tras el primer deploy o después de limpiar Datos): `npx prisma migrate deploy && npm run db:seed`
-4. Render inyectará `DATABASE_URL` durante el build, por lo que el pre-render de páginas puede leer los datos reales del catálogo.
+   - **Start command:** `npm run start:render`
+   - **Post-Deploy command** (opcional; úsalo si prefieres ejecutarlo manualmente tras el build inicial): `npx prisma migrate deploy && npm run db:seed`
+4. `npm run start:render` aplica `prisma migrate deploy`, ejecuta el seed cuando `SEED_DATABASE=true` y finalmente levanta `next start`.
 5. Para refrescar datos después de deploys futuros solo corre de nuevo el Post-Deploy command o ejecuta manualmente `npx prisma migrate deploy` y `npm run db:seed` desde la consola del servicio.
 
 ---
